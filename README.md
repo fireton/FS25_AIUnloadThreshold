@@ -1,55 +1,55 @@
 # FS25 AI Unload Threshold
 
-Мод для одиночной игры FS25 на macOS. Штатный работник **Deliver** отправляется на разгрузку после достижения выбранного заполнения и прекращения поступления груза. По умолчанию — **95%**.
+A mod for FS25 single-player on macOS. The built-in **Deliver** worker departs to unload once the selected fill level is reached and loading has stopped. The default threshold is **95%**.
 
-## Установка и настройка
+## Installation and configuration
 
-1. Скопируйте `FS25_AIUnloadThreshold.zip` в `~/Library/Application Support/FarmingSimulator2025/mods/`.
-2. При запуске карты включите **AI Unload Threshold** в списке модов.
-3. В pause menu откройте **Game Settings / Настройки игры**. Внизу находится **AI unloading threshold**.
-4. Передвигайте штатный бегунок мышью или стрелками клавиатуры: **50%, 60%, 70%, 75%, 80%, 85%, 90%, 95%, 98%, 100% (Vanilla)**. Позиции соответствуют десяти вариантам, а не линейной шкале процентов.
+1. Copy `FS25_AIUnloadThreshold.zip` to `~/Library/Application Support/FarmingSimulator2025/mods/`.
+2. Enable **AI Unload Threshold** in the mod list when starting a map.
+3. Open **Game Settings** in the pause menu. **AI unloading threshold** is at the bottom.
+4. Move the built-in slider with the mouse or keyboard arrow keys: **50%, 60%, 70%, 75%, 80%, 85%, 90%, 95%, 98%, 100% (Vanilla)**. The positions correspond to ten discrete options, rather than a linear percentage scale.
 
-Настройка применяется при следующем обновлении ожидания. Выбор сохраняется сразу в `modSettings/FS25_AIUnloadThreshold/settings.xml` в пользовательской папке игры и действует на всех картах. Отсутствующий или повреждённый XML и значения вне списка дают 95%. При ошибке записи выбранное значение действует до выхода, предупреждение попадает в лог.
+The setting takes effect on the next update of the waiting task. Your selection is saved immediately to `modSettings/FS25_AIUnloadThreshold/settings.xml` in the game's user data folder and applies to all maps. A missing or corrupted XML file, or a value outside the supported list, falls back to 95%. If saving fails, the selected value remains active until you exit the game, and a warning is written to the log.
 
-## Поведение
+## Behavior
 
-Поддерживается только штатная задача ожидания `AITaskWaitForFilling`, принадлежащая `AIJobDeliver`. **Load and Deliver**, полевые работы, обычное вождение и маршруты мод не меняет. AutoDrive и Courseplay не нужны.
+Only the built-in `AITaskWaitForFilling` task belonging to `AIJobDeliver` is supported. The mod does not change **Load and Deliver**, fieldwork, regular driving, or routes. AutoDrive and Courseplay are not required.
 
-Расчёт: `sum(fillLevel) / sum(fillLevel + freeCapacity)` по `fillUnitInfo` текущей задачи. Ёмкости разного размера имеют соответствующий вес; пустые участвующие ёмкости входят в знаменатель. Повторяющиеся ссылки на одну ёмкость учитываются один раз. Используется доступная вместимость по API, включая ограничения веса. При ошибочных данных мод не инициирует досрочное отправление.
+The calculation is `sum(fillLevel) / sum(fillLevel + freeCapacity)`, using the current task's `fillUnitInfo`. Fill units of different sizes are weighted accordingly; empty participating fill units are included in the denominator. Duplicate references to the same fill unit are counted only once. The available capacity reported by the API is used, including weight limits. If the data is invalid, the mod does not trigger an early departure.
 
-Например, 7600 л в доступной ёмкости 8000 л достигают 95%, а 7599 л — нет. Нужен положительный груз. Каждый непустой отсек должен иметь известный тип из штатной коллекции разрешённых грузов; мод не обходит штатные ошибки.
+For example, 7,600 L in an available capacity of 8,000 L reaches 95%, while 7,599 L does not. A positive load is required. Every nonempty compartment must contain a known fill type from the game's built-in collection of allowed fill types; the mod does not bypass the game's built-in error checks.
 
-При пороге ниже 100% достижение порога запускает штатный отсчёт ожидания. Пока объём хотя бы одного участвующего отсека увеличивается, мод переносит срок отправления: прицеп уедет после примерно **трёх секунд без поступления груза**. Короткая пауза с возобновлением загрузки сбрасывает отсчёт. Если до отправления груз опустится ниже порога, либо выбран более высокий порог, ожидание продолжается.
+At a threshold below 100%, reaching the threshold starts the game's built-in waiting countdown. As long as the fill level of at least one participating compartment is increasing, the mod postpones departure: the trailer leaves after approximately **three seconds without receiving any load**. A brief pause followed by resumed loading resets the countdown. If the load drops below the threshold before departure, or a higher threshold is selected, the task continues waiting.
 
-Контроль поступления выполняется перед штатным `update`, чтобы возобновление погрузки в момент истечения таймера не привело к отправлению. Он применяется только к отсчёту, который запустил мод. Завершение этапа, `aiPrepareLoading`, `aiFinishLoading`, выгрузка и повторные рейсы остаются у игры. Полностью заполненный прицеп использует штатную логику: поступать дальше зерну уже некуда.
+Incoming load is checked before the built-in `update`, so loading that resumes just as the timer expires does not cause a departure. This check applies only to a countdown started by the mod. Stage completion, `aiPrepareLoading`, `aiFinishLoading`, unloading, and repeat trips remain under the game's control. A completely full trailer uses the built-in logic: there is no room for any more grain.
 
-Погрузка определяется по фактическому увеличению объёма, отдельно для каждого отсека. Труба над прицепом сама по себе не блокирует отправление; пауза без поступления зерна более трёх секунд считается окончанием погрузки. Это также работает без специального флага у источника груза.
+Loading is detected by an actual increase in fill level, separately for each compartment. A pipe positioned over the trailer does not by itself prevent departure; a pause of more than three seconds without incoming grain is treated as the end of loading. This also works without a special flag on the load source.
 
-При **100% (Vanilla)** мод не читает ёмкости и не меняет поля AI: выполняется исходный метод игры. Уже начатая задержка сохраняется.
+At **100% (Vanilla)**, the mod does not read fill units or modify AI fields: the game's original method runs. Any delay already in progress is preserved.
 
-## Совместимость и API
+## Compatibility and API
 
-Установлена FS25 **1.25.1.0**, `ModDesc Version: 116`. Дескриптор проверяется по XSD из установленной игры. Lua AI и меню упакованы в `dataS.gar`; их исходники установленной версии недоступны как обычные файлы. Публичная документация GIANTS описывает **Script v1.20.0.0**, поэтому соответствие внутреннего поведения 1.25 требует игрового тестирования; его статус указан в `TEST_REPORT.md`.
+The installed version is FS25 **1.25.1.0**, with `ModDesc Version: 116`. The descriptor is validated against the XSD from the installed game. The AI and menu Lua code is packaged in `dataS.gar`; the installed version's source code is not available as ordinary files. The public GIANTS documentation describes **Script v1.20.0.0**, so compatibility with the internal behavior of 1.25 requires in-game testing; its status is recorded in `TEST_REPORT.md`.
 
-UI создаёт отдельный `OptionSliderElement` с оформлением `fs25_optionSlider` из установленного SDK. Контейнер строки — `BitmapElement`, поддерживающий штатную окраску строк при навигации и закрытии меню. Строка добавляется в `InGameMenuSettingsFrame.gameSettingsLayout`, то есть Game Settings, без поиска существующего бегунка и без изменений General Settings. Профили мода находятся в `gui/guiProfiles.xml`. При несовместимом API UI пишет предупреждение; частично созданная строка удаляется. Основная логика продолжает работать с сохранённым значением или 95%.
+The UI creates a separate `OptionSliderElement` using the `fs25_optionSlider` styling from the installed SDK. The row container is a `BitmapElement`, which supports the game's built-in row coloring during navigation and when the menu is closed. The row is added to `InGameMenuSettingsFrame.gameSettingsLayout`, i.e. Game Settings, without searching for an existing slider or modifying General Settings. The mod's profiles are in `gui/guiProfiles.xml`. If the UI API is incompatible, a warning is logged and any partially created row is removed. The core logic continues to work with the saved value or 95%.
 
-Хуки устанавливаются один раз; строка хранится на экземпляре страницы и повторно не создаётся. Описание и тексты интерфейса переведены на английский и немецкий через стандартный `l10n` в `modDesc.xml`. В multiplayer мод не заявляет поддержку, настройка недоступна и логика не применяется. Нестандартные прицепы — best effort.
+Hooks are installed once; the row is stored on the page instance and is not created again. The description and UI text are localized in English and German through the standard `l10n` mechanism in `modDesc.xml`. Multiplayer is not declared as supported; the setting is unavailable and the logic is not applied in multiplayer. Support for custom trailers is best effort.
 
-Официальные источники: [ожидание загрузки](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=81&class=849&version=script), [Deliver](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=54&class=537&version=script), [штатный бегунок](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=43&class=473&version=script).
+Official sources: [waiting for loading](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=81&class=849&version=script), [Deliver](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=54&class=537&version=script), [built-in slider](https://gdn.giants-software.com/documentation_scripting_fs25.php?category=43&class=473&version=script).
 
-## Диагностика и удаление
+## Diagnostics and removal
 
-Лог: `~/Library/Application Support/FarmingSimulator2025/log.txt`. Ищите `[AIUnloadThreshold]`: текущий порог, добавление бегунка и предупреждения о несовместимости. Ошибка данных прицепа пишется один раз на объект задачи, а не каждый кадр. При проблемах приложите версию игры, название техники и соответствующую часть лога.
+Log: `~/Library/Application Support/FarmingSimulator2025/log.txt`. Search for `[AIUnloadThreshold]` to find the current threshold, slider creation, and compatibility warnings. Invalid trailer data is logged once per task object, rather than every frame. When reporting a problem, include the game version, vehicle name, and relevant log excerpt.
 
-Для удаления выключите игру и уберите ZIP из `mods`. При желании удалите только папку `modSettings/FS25_AIUnloadThreshold/`. Сохранения и файлы установки мод не меняет.
+To remove the mod, exit the game and remove the ZIP from `mods`. Optionally, delete only the `modSettings/FS25_AIUnloadThreshold/` folder. The mod does not modify savegames or game installation files.
 
-## Сборка и локальные тесты
+## Build and local tests
 
 ```sh
 ./build.sh
 lua tests/run.lua
 ```
 
-Сборке нужен Python 3, тестам — Lua 5.4. ZIP создаётся по пути `release/FS25_AIUnloadThreshold.zip`, `modDesc.xml` находится непосредственно в корне архива. Папка `release` создаётся автоматически при необходимости. В ZIP входят только дескриптор, Lua-скрипты, XML профилей и DDS-иконка. README, отчёты, тесты, скриншоты и средства сборки остаются в проекте. Локальные тесты не подтверждают реальные поездки в игре.
+Building requires Python 3; tests require Lua 5.4. The ZIP is created at `release/FS25_AIUnloadThreshold.zip`, with `modDesc.xml` directly at the archive root. The `release` folder is created automatically if needed. The ZIP contains only the descriptor, Lua scripts, profile XML, and DDS icon. The README, reports, tests, screenshots, and build tools remain in the project. Local tests do not verify actual in-game trips.
 
-Иконка в моде — `icon_aiUnloadThreshold.dds`: 512×512, BC3/DXT5 с прозрачностью, без mipmaps. В проекте также остаются `icon.png` для предпросмотра и векторный исходник `assets/icon.svg`. Сборщик берёт имя готовой иконки из `modDesc.xml`; форматы при сборке не конвертируются.
+The mod icon is `icon_aiUnloadThreshold.dds`: 512×512, BC3/DXT5 with transparency, without mipmaps. The project also retains `icon.png` for previews and the vector source `assets/icon.svg`. The build script reads the name of the ready-made icon from `modDesc.xml`; no format conversion is performed during the build.
