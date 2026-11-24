@@ -1,0 +1,7 @@
+Description: Set the minimum trailer fill level for the standard AI Deliver job. The worker waits until the selected threshold is reached and no more cargo has arrived for about 3 seconds, then starts delivery. With looping enabled, the worker returns for the next load.
+
+Choose 50%, 60%, 70%, 75%, 80%, 85%, 90%, 95%, 98% or 100% in Pause Menu > Game Settings > AI unloading threshold. The default is 95%. At 100%, the original game behavior is used. The global setting is saved automatically and applies without restarting the game.
+
+Controls: Use the settings slider with the mouse or keyboard menu controls. No additional hotkeys are required.
+
+Compatibility: Single-player only. Affects Deliver, not Load and Deliver or fieldwork. Uses the combined available capacity of the participating trailer compartments. No additional mods are required.

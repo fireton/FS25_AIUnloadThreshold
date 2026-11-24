@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<modDesc descVersion="116">
+    <author>fireton</author>
+    <version>1.0.0.8</version>
+    <title>
+        <en>AI Unload Threshold</en>
+        <de>AI Unload Threshold</de>
+    </title>
+    <description>
+        <en><![CDATA[Description: Set the minimum trailer fill level for the standard AI Deliver job. The worker waits until the selected threshold is reached and no more cargo has arrived for about 3 seconds, then starts delivery. With looping enabled, the worker returns for the next load.
+
+Choose 50%, 60%, 70%, 75%, 80%, 85%, 90%, 95%, 98% or 100% in Pause Menu > Game Settings > AI unloading threshold. The default is 95%. At 100%, the original game behavior is used. The global setting is saved automatically and applies without restarting the game.
+
+Controls: Use the settings slider with the mouse or keyboard menu controls. No additional hotkeys are required.
+
+Compatibility: Single-player only. Affects Deliver, not Load and Deliver or fieldwork. Uses the combined available capacity of the participating trailer compartments. No additional mods are required.]]></en>
+        <de><![CDATA[Beschreibung: Lege den Mindestfüllstand der Anhänger für den normalen KI-Auftrag "Deliver" fest. Der Helfer wartet, bis der gewählte Füllstand erreicht ist und etwa 3 Sekunden lang kein weiteres Ladegut hinzugekommen ist. Anschließend beginnt die Lieferung. Bei aktivierter Wiederholung kehrt der Helfer für die nächste Ladung zurück.
+
+Wähle 50%, 60%, 70%, 75%, 80%, 85%, 90%, 95%, 98% oder 100% unter Pausenmenü > Spieleinstellungen > KI-Füllstand für die Lieferung. Der Standardwert beträgt 95%. Bei 100% gilt das ursprüngliche Spielverhalten. Die globale Einstellung wird automatisch gespeichert und ohne Neustart angewendet.
+
+Bedienung: Verwende den Schieberegler mit der Maus oder der Tastatur-Menüsteuerung. Zusätzliche Tastenkombinationen sind nicht erforderlich.
+
+Kompatibilität: Nur Einzelspieler. Betrifft "Deliver", nicht "Load and Deliver" oder Feldarbeit. Berechnet den Füllstand anhand der gesamten verfügbaren Kapazität der beteiligten Anhängerabteile. Keine weiteren Mods erforderlich.]]></de>
+    </description>
+    <iconFilename>icon_aiUnloadThreshold.dds</iconFilename>
+    <multiplayer supported="false"/>
+    <l10n>
+        <text name="aiut_label">
+            <en>AI unloading threshold</en>
+            <de>KI-Füllstand für die Lieferung</de>
+        </text>
+        <text name="aiut_tooltip">
+            <en>Minimum trailer fill level for AI delivery. Waits for 3 seconds without incoming cargo. 100% restores vanilla behavior.</en>
+            <de>Mindestfüllstand der Anhänger für die KI-Lieferung. Wartet 3 Sekunden ohne weiteres Ladegut. 100% stellt das ursprüngliche Spielverhalten wieder her.</de>
+        </text>
+        <text name="aiut_vanilla">
+            <en>100% (Vanilla)</en>
+            <de>100% (Original)</de>
+        </text>
+    </l10n>
+    <extraSourceFiles>
+        <sourceFile filename="scripts/Settings.lua"/>
+        <sourceFile filename="scripts/UnloadThreshold.lua"/>
+        <sourceFile filename="scripts/SettingsUI.lua"/>
+        <sourceFile filename="scripts/main.lua"/>
+    </extraSourceFiles>
+</modDesc>

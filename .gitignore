@@ -1,0 +1,20 @@
+# Generated build archives (keep release notes and screenshots tracked).
+*.zip
+*.zip.tmp
+
+# macOS metadata.
+.DS_Store
+._*
+
+# Python caches and local environments.
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Temporary files and logs.
+*.log
+*.tmp
+*.swp
+*.swo
+*~

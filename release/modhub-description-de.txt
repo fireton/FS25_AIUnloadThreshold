@@ -1,0 +1,7 @@
+Beschreibung: Lege den Mindestfüllstand der Anhänger für den normalen KI-Auftrag "Deliver" fest. Der Helfer wartet, bis der gewählte Füllstand erreicht ist und etwa 3 Sekunden lang kein weiteres Ladegut hinzugekommen ist. Anschließend beginnt die Lieferung. Bei aktivierter Wiederholung kehrt der Helfer für die nächste Ladung zurück.
+
+Wähle 50%, 60%, 70%, 75%, 80%, 85%, 90%, 95%, 98% oder 100% unter Pausenmenü > Spieleinstellungen > KI-Füllstand für die Lieferung. Der Standardwert beträgt 95%. Bei 100% gilt das ursprüngliche Spielverhalten. Die globale Einstellung wird automatisch gespeichert und ohne Neustart angewendet.
+
+Bedienung: Verwende den Schieberegler mit der Maus oder der Tastatur-Menüsteuerung. Zusätzliche Tastenkombinationen sind nicht erforderlich.
+
+Kompatibilität: Nur Einzelspieler. Betrifft "Deliver", nicht "Load and Deliver" oder Feldarbeit. Berechnet den Füllstand anhand der gesamten verfügbaren Kapazität der beteiligten Anhängerabteile. Keine weiteren Mods erforderlich.

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<GUIProfiles>
+    <Profile name="aiut_settingsRow" extends="fs25_multiTextOptionContainer">
+        <height value="80px"/>
+        <imageColor value="$preset_colorTransparent"/>
+    </Profile>
+    <Profile name="aiut_settingsSlider" extends="fs25_optionSlider" with="anchorMiddleRight">
+        <width value="270px"/>
+        <position value="-10px 0px"/>
+        <focusOnHighlight value="true"/>
+        <wrap value="false"/>
+        <updateTextPosition value="false"/>
+        <defaultProfileText value="fs25_optionSliderText"/>
+    </Profile>
+</GUIProfiles>
