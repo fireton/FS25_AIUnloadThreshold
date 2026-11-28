@@ -247,6 +247,47 @@ check("other jobs, client and multiplayer are untouched", function()
     end
 end)
 
+check("fill snapshots and records are reused without changing the previous frame", function()
+    local task, vehicle = taskWith(1000, 8000)
+    local first = logic.readUnits(task)
+    local record = first[1]
+    vehicle.level = 2000
+    local second = logic.readUnits(task)
+    assert(first ~= second)
+    equal(first[1].fillLevel, 1000)
+    equal(second[1].fillLevel, 2000)
+    for i = 1, 1000 do
+        local current = logic.readUnits(task)
+        equal(current, i % 2 == 1 and first or second)
+    end
+    equal(first[1], record)
+    -- Both buffers must drop removed units, including their old capacity.
+    task.fillUnitInfo = {}
+    equal(#logic.readUnits(task), 0)
+    equal(#logic.readUnits(task), 0)
+    task.fillUnitInfo = {{vehicle = vehicle, fillUnitIndex = 1}}
+    equal(logic.readUnits(task)[1], record)
+end)
+check("invalid task collections, entries and indexes are guarded", function()
+    equal(logic.readUnits(nil), nil)
+    equal(logic.readUnits({}), nil)
+    local task = taskWith(1000, 8000)
+    task.fillUnitInfo = {false}
+    equal(logic.readUnits(task), nil)
+    for _, index in ipairs({0, -1, 1.5, "1", 0/0}) do
+        task.fillUnitInfo = {{vehicle = {}, fillUnitIndex = index}}
+        equal(logic.readUnits(task), nil)
+    end
+end)
+check("unexpected vehicle getter errors remain visible", function()
+    local task, vehicle = taskWith(7920, 8000)
+    vehicle.getFillUnitFreeCapacity = function() error("getter failure") end
+    settings.threshold = 95
+    local ok, message = pcall(logic.afterUpdate, task)
+    equal(ok, false)
+    assert(message:find("getter failure", 1, true))
+end)
+
 local stored, existing, corrupt, failedSave
 g_modSettingsDirectory = "/profile/modSettings/"
 getUserProfileAppPath = function() return "/profile/" end
@@ -286,15 +327,27 @@ check("exact ten options persist with the unchanged 95 percent default", functio
 end)
 check("malformed trailer data falls back without repeated warnings", function()
     local task, vehicle = taskWith(7920, 8000)
-    vehicle.getFillUnitFreeCapacity = function() error("unsupported trailer") end
+    vehicle.getFillUnitFreeCapacity = nil
     local warnings = 0
     local saved = Logging.warning
     Logging.warning = function() warnings = warnings + 1 end
-    -- Invoke the extension directly; errors in the game's own getters remain its responsibility.
+    -- Invoke the extension directly: vanilla requires this API too.
     settings.threshold = 95
     logic.afterUpdate(task); logic.afterUpdate(task)
     equal(task.isFullyLoaded, false); equal(warnings, 1)
     Logging.warning = saved
+end)
+
+check("XML creation failure and invalid save inputs are guarded", function()
+    local create = XMLFile.create
+    XMLFile.create = function() return nil end
+    equal(settings:save(), false)
+    XMLFile.create = function() error("must not create XML for invalid inputs") end
+    local directory, filename, threshold = settings.directory, settings.filename, settings.threshold
+    settings.directory = nil; equal(settings:save(), false)
+    settings.directory = directory; settings.filename = ""; equal(settings:save(), false)
+    settings.filename = filename; settings.threshold = 55; equal(settings:save(), false)
+    settings.threshold = threshold; XMLFile.create = create
 end)
 
 local focusId = 0
@@ -355,8 +408,12 @@ local function makePage()
         result.invalidateLayout = function(self) self.invalidated = true end
         return result
     end
+    local workersRow = element()
+    workersRow:addElement({id = "multiHelperManure"})
+    local gameLayout = layout()
+    gameLayout:addElement(workersRow)
     return {name = "InGameMenuSettings", controlsList = {},
-        generalSettingsLayout = layout(), gameSettingsLayout = layout(),
+        generalSettingsLayout = layout(), gameSettingsLayout = gameLayout,
         updateAlternatingElements = function(self, targetLayout)
             self.stripedLayout = targetLayout
             self.stripeCalls = (self.stripeCalls or 0) + 1
@@ -366,7 +423,7 @@ local page
 check("constructs native slider in Game Settings without an existing template", function()
     page = makePage(); settings.threshold = 95
     AIUnloadThresholdUI.onOpen(page); AIUnloadThresholdUI.onOpen(page)
-    equal(#page.controlsList, 1); equal(#page.gameSettingsLayout.elements, 1)
+    equal(#page.controlsList, 1); equal(#page.gameSettingsLayout.elements, 2)
     equal(#page.generalSettingsLayout.elements, 0)
     local row = page.aiUnloadThresholdRow
     local slider = row.aiUnloadThresholdOption
@@ -404,7 +461,53 @@ check("native row striping runs after insertion and on reopening", function()
     equal(striped.stripeCalls, 1)
     AIUnloadThresholdUI.onOpen(striped)
     equal(striped.stripeCalls, 2)
-    equal(#striped.gameSettingsLayout.elements, 1)
+    equal(#striped.gameSettingsLayout.elements, 2)
+end)
+check("stays under AI Workers before other mods regardless of insertion order", function()
+    for _, addedBefore in ipairs({true, false}) do
+        local target = makePage()
+        local layout = target.gameSettingsLayout
+        local workersRow = layout.elements[1]
+        target.controlsList = {workersRow}
+        local heading, transport, contractor = element(), element(), element()
+        heading.id = "moveHusbandryAnimals_sectionHeader"
+        local function addOtherMods()
+            layout:addElement(heading)
+            layout:addElement(transport)
+            layout:addElement(contractor)
+            table.insert(target.controlsList, transport)
+            table.insert(target.controlsList, contractor)
+        end
+        if addedBefore then addOtherMods() end
+        AIUnloadThresholdUI.onOpen(target)
+        if not addedBefore then addOtherMods() end
+        AIUnloadThresholdUI.onOpen(target)
+        local row = target.aiUnloadThresholdRow
+        equal(layout.elements[1], workersRow)
+        equal(layout.elements[2], row)
+        equal(layout.elements[3], heading)
+        equal(layout.elements[4], transport)
+        equal(layout.elements[5], contractor)
+        equal(target.controlsList[2], row)
+        equal(#layout.elements, 5)
+        equal(#target.controlsList, 4)
+        -- A later mod can reorder existing elements; reopening restores placement.
+        table.remove(layout.elements, 2)
+        table.insert(layout.elements, row)
+        table.remove(target.controlsList, 2)
+        table.insert(target.controlsList, row)
+        AIUnloadThresholdUI.onOpen(target)
+        equal(layout.elements[2], row)
+        equal(target.controlsList[2], row)
+    end
+end)
+check("missing AI Workers anchor never appends to another mod section", function()
+    local target = makePage()
+    target.gameSettingsLayout.elements[1].elements[1].id = "unrelatedModSetting"
+    AIUnloadThresholdUI.onOpen(target)
+    equal(target.aiUnloadThresholdRow, nil)
+    equal(#target.gameSettingsLayout.elements, 1)
+    equal(#target.controlsList, 0)
 end)
 check("multiplayer disables slider and ignores callbacks", function()
     g_currentMission.missionDynamicInfo.isMultiplayer = true
@@ -421,10 +524,17 @@ end)
 check("failed slider creation cleans up without adding a row", function()
     local broken = makePage()
     local saved = OptionSliderElement.new
-    OptionSliderElement.new = function() error("missing engine API") end
+    local detached
+    OptionSliderElement.new = function(target)
+        local slider = saved(target)
+        detached = slider
+        slider.setElementsByName = function() end
+        return slider
+    end
     AIUnloadThresholdUI.onOpen(broken)
-    equal(#broken.controlsList, 0); equal(#broken.gameSettingsLayout.elements, 0)
+    equal(#broken.controlsList, 0); equal(#broken.gameSettingsLayout.elements, 1)
     equal(broken.aiUnloadThresholdRow, nil)
+    equal(detached.parent.deleted, true)
     OptionSliderElement.new = saved
 end)
 check("menu hook and profile loading are installed once", function()

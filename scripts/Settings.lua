@@ -39,18 +39,13 @@ function AIUnloadThresholdSettings:load()
         return
     end
 
-    local xml
-    local ok, value = pcall(function()
-        xml = XMLFile.load("AIUnloadThresholdSettings", self.filename)
-        if xml == nil then
-            return nil
-        end
-        return tonumber(xml:getString("aiUnloadThreshold.settings#threshold"))
-    end)
+    local xml = XMLFile.load("AIUnloadThresholdSettings", self.filename)
+    local value
     if xml ~= nil then
+        value = tonumber(xml:getString("aiUnloadThreshold.settings#threshold"))
         xml:delete()
     end
-    if ok and self:isValid(value) then
+    if self:isValid(value) then
         self.threshold = value
     else
         Logging.warning("[AIUnloadThreshold] Invalid settings XML or threshold; using 95%%.")
@@ -58,24 +53,21 @@ function AIUnloadThresholdSettings:load()
 end
 
 function AIUnloadThresholdSettings:save()
-    if self.filename == nil then
+    if type(self.filename) ~= "string" or self.filename == ""
+        or type(self.directory) ~= "string" or self.directory == "" or not self:isValid(self.threshold) then
         return false
     end
-    local xml
-    local ok, saved = pcall(function()
-        createFolder(self.directory)
-        xml = XMLFile.create("AIUnloadThresholdSettings", self.filename, "aiUnloadThreshold")
-        if xml == nil then
-            return false
-        end
-        xml:setInt("aiUnloadThreshold.settings#threshold", self.threshold)
-        -- The engine owns XML serialization and file replacement.
-        return xml:save() ~= false
-    end)
-    if xml ~= nil then
-        xml:delete()
+    createFolder(self.directory)
+    local xml = XMLFile.create("AIUnloadThresholdSettings", self.filename, "aiUnloadThreshold")
+    if xml == nil then
+        Logging.warning("[AIUnloadThreshold] Could not create settings XML at %s.", self.filename)
+        return false
     end
-    if not ok or not saved then
+    xml:setInt("aiUnloadThreshold.settings#threshold", self.threshold)
+    -- The engine owns XML serialization and file replacement.
+    local saved = xml:save() ~= false
+    xml:delete()
+    if not saved then
         Logging.warning("[AIUnloadThreshold] Could not save settings to %s.", self.filename)
         return false
     end

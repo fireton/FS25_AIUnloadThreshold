@@ -36,19 +36,37 @@ function AIUnloadThresholdLogic.isSinglePlayer(mission)
 end
 
 function AIUnloadThresholdLogic.readUnits(task)
-    if type(task.fillUnitInfo) ~= "table" or type(task.fillTypes) ~= "table" then
+    if type(task) ~= "table" or type(task.fillUnitInfo) ~= "table" or type(task.fillTypes) ~= "table" then
         return nil, "Missing fill unit collection or allowed fill types"
     end
-    local units, seen = {}, {}
+    -- Alternate snapshots so the loading watch can compare with the previous
+    -- frame. Tables and unit records are allocated only as the task grows.
+    local cache = task.aiUnloadThresholdReadCache
+    if cache == nil then
+        cache = {next = 1, {units = {}, records = {}}, {units = {}, records = {}}}
+        task.aiUnloadThresholdReadCache = cache
+    end
+    local buffer = cache[cache.next]
+    cache.next = 3 - cache.next
+    local units, count = buffer.units, 0
     for _, info in ipairs(task.fillUnitInfo) do
+        if type(info) ~= "table" then
+            return nil, "Invalid fill unit entry"
+        end
         local vehicle, index = info.vehicle, info.fillUnitIndex
-        if vehicle == nil or index == nil or type(vehicle.getFillUnitFillType) ~= "function"
+        if type(vehicle) ~= "table" or not isFinite(index) or index < 1 or index % 1 ~= 0
+            or type(vehicle.getFillUnitFillType) ~= "function"
             or type(vehicle.getFillUnitFillLevel) ~= "function" or type(vehicle.getFillUnitFreeCapacity) ~= "function" then
             return nil, "Missing fill unit API"
         end
-        seen[vehicle] = seen[vehicle] or {}
-        if not seen[vehicle][index] then
-            seen[vehicle][index] = true
+        local duplicate = false
+        for i = 1, count do
+            if units[i].vehicle == vehicle and units[i].fillUnitIndex == index then
+                duplicate = true
+                break
+            end
+        end
+        if not duplicate then
             local level = vehicle:getFillUnitFillLevel(index)
             local fillType = vehicle:getFillUnitFillType(index)
             if not isFinite(level) then
@@ -60,10 +78,18 @@ function AIUnloadThresholdLogic.readUnits(task)
                 or not task.fillTypes[fillType]) then
                 return nil
             end
-            table.insert(units, {vehicle = vehicle, fillUnitIndex = index,
-                fillLevel = level, freeCapacity = vehicle:getFillUnitFreeCapacity(index)})
+            count = count + 1
+            local unit = buffer.records[count]
+            if unit == nil then
+                unit = {}
+                buffer.records[count] = unit
+            end
+            unit.vehicle, unit.fillUnitIndex = vehicle, index
+            unit.fillLevel, unit.freeCapacity = level, vehicle:getFillUnitFreeCapacity(index)
+            units[count] = unit
         end
     end
+    for i = count + 1, #units do units[i] = nil end
     return units
 end
 
@@ -90,8 +116,15 @@ function AIUnloadThresholdLogic.beforeUpdate(task)
         AIUnloadThresholdLogic.clearLoadingWatch(task)
         return
     end
-    local ok, units = pcall(AIUnloadThresholdLogic.readUnits, task)
-    local reached = ok and units ~= nil and AIUnloadThresholdLogic.calculate(units, threshold)
+    if not isFinite(task.waitDuration) or task.waitDuration < 0 or not isFinite(g_time) then
+        task.isFullyLoaded = false
+        task.waitTime = 0
+        AIUnloadThresholdLogic.clearLoadingWatch(task)
+        AIUnloadThresholdLogic.warnOnce(task, "Unsupported wait timer API")
+        return
+    end
+    local units = AIUnloadThresholdLogic.readUnits(task)
+    local reached = units ~= nil and AIUnloadThresholdLogic.calculate(units, threshold)
     if not reached then
         -- The new requirement makes this countdown provisional: a load below
         -- the threshold or invalid cargo returns to normal vanilla validation.
@@ -131,11 +164,7 @@ function AIUnloadThresholdLogic.afterUpdate(task)
         AIUnloadThresholdLogic.warnOnce(task, "Unsupported wait timer API")
         return
     end
-    local ok, units, reason = pcall(AIUnloadThresholdLogic.readUnits, task)
-    if not ok then
-        AIUnloadThresholdLogic.warnOnce(task, "Could not read trailer data; using vanilla behavior")
-        return
-    end
+    local units, reason = AIUnloadThresholdLogic.readUnits(task)
     if units == nil then
         if reason ~= nil then
             AIUnloadThresholdLogic.warnOnce(task, reason)
